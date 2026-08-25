@@ -3749,6 +3749,10 @@ public class Server {
         this.mobsFromBlocks = config.debugSettings().blockListener();
         this.updateChecks = config.debugSettings().updateNotifications();
         this.deprecatedVerbose = config.debugSettings().deprecatedVerbose();
+        cn.nukkit.network.process.UsingItemReceive.applyServerConfig(config.debugSettings().debugUsingItem());
+        if (cn.nukkit.network.process.UsingItemReceive.DEBUG) {
+            log.info("Using-item receive debug logging is enabled");
+        }
 
         // Game features
         this.achievementsEnabled = config.gameFeatureSettings().achievements();

@@ -55,4 +55,8 @@ public class DebugSettings extends OkaeriConfig {
     @Comment("Hastebin API token for paste uploads")
     @CustomKey("hastebin-token")
     private String hastebinToken = "";
+
+    @Comment("Log AuthInput / CLICK_AIR / PlayerAction setUsingItem receive. Also enabled by -Dnukkit.debugUsingItem=true")
+    @CustomKey("debug-using-item")
+    private boolean debugUsingItem = false;
 }

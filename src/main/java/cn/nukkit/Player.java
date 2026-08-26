@@ -5456,6 +5456,19 @@ public class Player extends EntityHuman implements CommandSender, InventoryHolde
                                 return;
                             }
 
+                            Item clickBlockHeld = this.inventory.getItemInHand();
+                            if (UsingItemReceive.shouldKeepUsingOnClickBlock(this.isUsingItem(), UsingItemReceive.isHoldToUseItem(clickBlockHeld))) {
+                                if (UsingItemReceive.DEBUG) {
+                                    log.info("[UsingItem] {} keep using despite CLICK_BLOCK ticksUsed={} item={}",
+                                            this.username, this.server.getTick() - this.startAction,
+                                            UsingItemReceive.describeItem(clickBlockHeld));
+                                }
+                                return;
+                            }
+                            if (UsingItemReceive.DEBUG && this.isUsingItem()) {
+                                log.info("[UsingItem] {} CLICK_BLOCK cleared using item={}",
+                                        this.username, UsingItemReceive.describeItem(clickBlockHeld));
+                            }
                             this.setUsingItem(false);
 
                             if (!(this.distance(blockVector.asVector3()) > (this.isCreative() ? 13 : 7))) {
@@ -5818,8 +5831,20 @@ public class Player extends EntityHuman implements CommandSender, InventoryHolde
                                 if (this.isUsingItem()) {
                                     item = this.inventory.getItemInHand();
                                     int ticksUsed = this.server.getTick() - this.startAction;
+                                    if (UsingItemReceive.shouldKeepUsingOnEarlyRelease(
+                                            true, UsingItemReceive.isHoldToUseItem(item), ticksUsed)) {
+                                        if (UsingItemReceive.DEBUG) {
+                                            log.info("[UsingItem] {} keep using despite early RELEASE ticksUsed={} item={}",
+                                                    this.username, ticksUsed, UsingItemReceive.describeItem(item));
+                                        }
+                                        return;
+                                    }
                                     if (!item.onRelease(this, ticksUsed)) {
                                         this.inventory.sendContents(this);
+                                    }
+                                    if (UsingItemReceive.DEBUG) {
+                                        log.info("[UsingItem] {} RELEASE cleared using ticksUsed={} item={}",
+                                                this.username, ticksUsed, UsingItemReceive.describeItem(item));
                                     }
                                     this.setUsingItem(false);
                                 } else {
@@ -5868,7 +5893,21 @@ public class Player extends EntityHuman implements CommandSender, InventoryHolde
                                 break;
                         }
                     } finally {
-                        this.setUsingItem(false);
+                        Item heldAfterRelease = this.inventory != null ? this.inventory.getItemInHandFast() : null;
+                        int ticksUsedAfterRelease = this.startAction >= 0 ? this.server.getTick() - this.startAction : -1;
+                        if (UsingItemReceive.shouldKeepUsingOnEarlyRelease(
+                                this.isUsingItem(), UsingItemReceive.isHoldToUseItem(heldAfterRelease), ticksUsedAfterRelease)) {
+                            if (UsingItemReceive.DEBUG) {
+                                log.info("[UsingItem] {} keep using despite RELEASE finally ticksUsed={} item={}",
+                                        this.username, ticksUsedAfterRelease, UsingItemReceive.describeItem(heldAfterRelease));
+                            }
+                        } else {
+                            if (UsingItemReceive.DEBUG && this.isUsingItem()) {
+                                log.info("[UsingItem] {} RELEASE finally cleared using ticksUsed={} item={}",
+                                        this.username, ticksUsedAfterRelease, UsingItemReceive.describeItem(heldAfterRelease));
+                            }
+                            this.setUsingItem(false);
+                        }
                     }
                     break;
                 default:

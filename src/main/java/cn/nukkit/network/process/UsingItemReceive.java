@@ -140,6 +140,28 @@ public final class UsingItemReceive {
         return alreadyUsing && currentHeldIndex != packetHotbarSlot;
     }
 
+    /**
+     * MOT {@code USE_ITEM} CLICK_BLOCK always called {@code setUsingItem(false)} before
+     * {@code Level.useItemOn}. Java Fabric keeps sending {@code USE_ITEM_ON} at the
+     * crosshair while chewing/drawing, so that packet would abort auto-complete after
+     * 1 tick. Keep using and skip the block use; a later empty-hand / non-hold click
+     * still places/activates.
+     */
+    public static boolean shouldKeepUsingOnClickBlock(boolean alreadyUsing, boolean holdToUse) {
+        return alreadyUsing && holdToUse;
+    }
+
+    /**
+     * MOT {@code TYPE_RELEASE_ITEM} has a {@code finally} that always cleared using.
+     * Java may emit {@code RELEASE_USE_ITEM} on the next tick (look-at-block, NBT
+     * mismatch cancel, or local animation edge). Food/bow auto-complete from
+     * {@code processAutoCompletion()} / a duration-ready second CLICK_AIR; an early
+     * release is not a real interrupt.
+     */
+    public static boolean shouldKeepUsingOnEarlyRelease(boolean alreadyUsing, boolean holdToUse, int ticksUsed) {
+        return alreadyUsing && holdToUse && ticksUsed < 2;
+    }
+
     public static String describeItem(Item item) {
         if (item == null) {
             return "null";

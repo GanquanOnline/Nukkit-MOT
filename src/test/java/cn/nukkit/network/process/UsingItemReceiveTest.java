@@ -118,6 +118,23 @@ class UsingItemReceiveTest {
     }
 
     @Test
+    void keepUsingWhenClickBlockArrivesDuringHold() {
+        assertTrue(UsingItemReceive.shouldKeepUsingOnClickBlock(true, true));
+        assertFalse(UsingItemReceive.shouldKeepUsingOnClickBlock(false, true));
+        assertFalse(UsingItemReceive.shouldKeepUsingOnClickBlock(true, false));
+    }
+
+    @Test
+    void keepUsingOnReleaseOnlyForTheFirstTicks() {
+        assertTrue(UsingItemReceive.shouldKeepUsingOnEarlyRelease(true, true, 0));
+        assertTrue(UsingItemReceive.shouldKeepUsingOnEarlyRelease(true, true, 1));
+        assertFalse(UsingItemReceive.shouldKeepUsingOnEarlyRelease(true, true, 2));
+        assertFalse(UsingItemReceive.shouldKeepUsingOnEarlyRelease(true, true, 31));
+        assertFalse(UsingItemReceive.shouldKeepUsingOnEarlyRelease(false, true, 0));
+        assertFalse(UsingItemReceive.shouldKeepUsingOnEarlyRelease(true, false, 0));
+    }
+
+    @Test
     void netease860AuthInputStartUsingItemDecodesAndWouldSetUsingItem() {
         assertTrue(UsingItemReceiveProbe.run().startsWith("ok "));
     }

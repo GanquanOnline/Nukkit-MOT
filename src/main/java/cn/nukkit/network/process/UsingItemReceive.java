@@ -23,14 +23,18 @@ import cn.nukkit.network.protocol.types.AuthInputAction;
 public final class UsingItemReceive {
 
     /**
-     * MOT 860 / NetEase Java proxy debug. Enabled with {@code -Dnukkit.debugUsingItem=true},
-     * env {@code NUKKIT_DEBUG_USING_ITEM=1}, or {@code debug-settings.debug-using-item} in
-     * nukkit-mot.yml. Keep off in production: CLICK_AIR and AuthInput fire every use start.
+     * MOT 860 / NetEase Java proxy debug. Enabled with {@code -Dnukkit.debugViaBedrock=true},
+     * env {@code NUKKIT_DEBUG_VIABEDROCK=1}, or {@code debug-settings.debug-viabedrock-je} in
+     * nukkit-mot.yml. The old JVM property and environment variable remain accepted for
+     * compatibility. Keep off in production: CLICK_AIR and AuthInput fire every use start.
      */
     public static volatile boolean DEBUG = propertyOrEnvEnabled();
 
     private static boolean propertyOrEnvEnabled() {
-        return Boolean.getBoolean("nukkit.debugUsingItem")
+        return Boolean.getBoolean("nukkit.debugViaBedrock")
+                || Boolean.getBoolean("nukkit.debugUsingItem")
+                || "1".equals(System.getenv("NUKKIT_DEBUG_VIABEDROCK"))
+                || "true".equalsIgnoreCase(System.getenv("NUKKIT_DEBUG_VIABEDROCK"))
                 || "1".equals(System.getenv("NUKKIT_DEBUG_USING_ITEM"))
                 || "true".equalsIgnoreCase(System.getenv("NUKKIT_DEBUG_USING_ITEM"));
     }

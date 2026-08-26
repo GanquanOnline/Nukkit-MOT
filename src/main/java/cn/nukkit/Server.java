@@ -3749,9 +3749,9 @@ public class Server {
         this.mobsFromBlocks = config.debugSettings().blockListener();
         this.updateChecks = config.debugSettings().updateNotifications();
         this.deprecatedVerbose = config.debugSettings().deprecatedVerbose();
-        cn.nukkit.network.process.UsingItemReceive.applyServerConfig(config.debugSettings().debugUsingItem());
+        cn.nukkit.network.process.UsingItemReceive.applyServerConfig(config.debugSettings().debugViaBedrock());
         if (cn.nukkit.network.process.UsingItemReceive.DEBUG) {
-            log.info("Using-item receive debug logging is enabled");
+            log.info("ViaBedrock JE debug logging is enabled");
         }
 
         // Game features

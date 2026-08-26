@@ -77,6 +77,23 @@ public class ConfigMigration {
                 }
             }
 
+            // Migrate debug-settings.debug-using-item -> debug-settings.debug-viabedrock-je.
+            // The new name reflects that these logs diagnose ViaBedrock Java Edition traffic,
+            // while preserving the value selected by existing server operators.
+            Object debugObj = root.get("debug-settings");
+            if (debugObj instanceof Map<?, ?> debugMap) {
+                Map<String, Object> debug = (Map<String, Object>) debugMap;
+                if (debug.containsKey("debug-using-item")) {
+                    Object oldValue = debug.remove("debug-using-item");
+                    if (!debug.containsKey("debug-viabedrock-je")) {
+                        debug.put("debug-viabedrock-je", oldValue);
+                    }
+                    changed = true;
+                    log.info("Migrated 'debug-settings.debug-using-item' to "
+                            + "'debug-settings.debug-viabedrock-je' in nukkit-mot.yml");
+                }
+            }
+
             if (changed) {
                 DumperOptions options = new DumperOptions();
                 options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);

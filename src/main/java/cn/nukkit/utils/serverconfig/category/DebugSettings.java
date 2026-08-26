@@ -56,7 +56,7 @@ public class DebugSettings extends OkaeriConfig {
     @CustomKey("hastebin-token")
     private String hastebinToken = "";
 
-    @Comment("Log AuthInput / CLICK_AIR / PlayerAction setUsingItem receive. Also enabled by -Dnukkit.debugUsingItem=true")
-    @CustomKey("debug-using-item")
-    private boolean debugUsingItem = false;
+    @Comment("Log AuthInput / CLICK_AIR / PlayerAction setUsingItem receive for ViaBedrock Java Edition. Also enabled by -Dnukkit.debugViaBedrock=true")
+    @CustomKey("debug-viabedrock-je")
+    private boolean debugViaBedrock = false;
 }

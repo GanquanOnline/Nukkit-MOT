@@ -1,6 +1,7 @@
 package cn.nukkit.entity.item;
 
 import cn.nukkit.Player;
+import cn.nukkit.Server;
 import cn.nukkit.block.Block;
 import cn.nukkit.block.BlockID;
 import cn.nukkit.block.BlockWater;
@@ -50,6 +51,10 @@ public class EntityBoat extends EntityVehicle {
     public static final double SINKING_DEPTH = 0.07;
     public static final double SINKING_SPEED = 0.0005;
     public static final double SINKING_MAX_SPEED = 0.005;
+
+    // TEMP #1-2 boat takeoff debug. Remove after root cause is confirmed.
+    private static final boolean TEMP_BOAT_TAKEOFF_DEBUG = true;
+    private int tempBoatDebugIgnoreTicks;
 
     protected float deltaRotation;
     protected boolean sinking = true;
@@ -143,6 +148,9 @@ public class EntityBoat extends EntityVehicle {
         boolean hasUpdate = false;
 
         double waterDiff = getWaterLevel();
+        double beforeY = this.y;
+        double beforeMotionY = this.motionY;
+        boolean hadPassenger = getPassenger() instanceof Player;
 
         boolean isPlayerOfNewerVersion = getPassenger() instanceof Player player && player.protocol >= ProtocolInfo.v1_21_130_28;
         if (isPlayerOfNewerVersion) {
@@ -150,6 +158,7 @@ public class EntityBoat extends EntityVehicle {
         }
 
         boolean simulateWaves = (!(getPassenger() instanceof Player) || isPlayerOfNewerVersion) && !getDataFlag(DATA_FLAGS, DATA_FLAG_OUT_OF_CONTROL);
+        String wavePhase = "none";
 
         if (simulateWaves) {
             if (waterDiff > SINKING_DEPTH && !this.sinking) {
@@ -160,10 +169,14 @@ public class EntityBoat extends EntityVehicle {
 
             if (waterDiff < -0.07) {
                 this.motionY = Math.min(0.05, this.motionY + 0.005);
+                wavePhase = "buoy-up";
             } else if (waterDiff < 0 || !this.sinking) {
                 this.motionY = this.motionY > SINKING_MAX_SPEED ? Math.max(this.motionY - 0.02, SINKING_MAX_SPEED) : this.motionY + SINKING_SPEED;
+                wavePhase = "bob";
             }
         }
+
+        double afterWaveMotionY = this.motionY;
 
         if (this.checkObstruction(this.x, this.y, this.z)) {
             hasUpdate = true;
@@ -177,9 +190,11 @@ public class EntityBoat extends EntityVehicle {
         if (simulateWaves) {
             if (waterDiff > SINKING_DEPTH || this.sinking) {
                 this.motionY = waterDiff > 0.5 ? this.motionY - this.getGravity() : (this.motionY - SINKING_SPEED < -0.005 ? this.motionY : this.motionY - SINKING_SPEED);
+                wavePhase = wavePhase.equals("none") ? "sink" : wavePhase + "+sink";
             }
         }
 
+        double beforeMoveMotionY = this.motionY;
         this.move(this.motionX, this.motionY, this.motionZ);
 
         Location from = new Location(lastX, lastY, lastZ, lastYaw, lastPitch, level);
@@ -200,6 +215,42 @@ public class EntityBoat extends EntityVehicle {
                             this.level.setBlockAt((int) block.x, (int) block.y, (int) block.z, 0, 0);
                             this.level.dropItem(block, Item.get(Item.LILY_PAD, 0, 1));
                         });
+            }
+        }
+
+        if (TEMP_BOAT_TAKEOFF_DEBUG && hadPassenger) {
+            if (this.tempBoatDebugIgnoreTicks > 0) {
+                this.tempBoatDebugIgnoreTicks--;
+            }
+            double dy = this.y - beforeY;
+            boolean interesting = Math.abs(dy) > 0.0005
+                    || Math.abs(this.motionY) > 0.0005
+                    || Math.abs(beforeMotionY) > 0.0005
+                    || !simulateWaves;
+            if (interesting && this.tempBoatDebugIgnoreTicks == 0) {
+                Entity passenger = getPassenger();
+                int protocol = passenger instanceof Player p ? p.protocol : -1;
+                Server.getInstance().getLogger().info(String.format(
+                        "[TEMP #1-2 boat-tick] id=%d age=%d protocol=%d simWaves=%s sinking=%s phase=%s waterDiff=%.5f y=%.5f->%.5f dy=%.5f motionY=%.5f->wave=%.5f->move=%.5f->after=%.5f onGround=%s inWater=%s ignoreTicks=%d",
+                        this.getId(),
+                        this.age,
+                        protocol,
+                        simulateWaves,
+                        this.sinking,
+                        wavePhase,
+                        waterDiff,
+                        beforeY,
+                        this.y,
+                        dy,
+                        beforeMotionY,
+                        afterWaveMotionY,
+                        beforeMoveMotionY,
+                        this.motionY,
+                        this.onGround,
+                        this.inWater,
+                        this.tempBoatDebugIgnoreTicks
+                ));
+                this.tempBoatDebugIgnoreTicks = 0;
             }
         }
 
@@ -459,7 +510,10 @@ public class EntityBoat extends EntityVehicle {
     }
 
     public void onInput(double x, double y, double z, double yaw) {
-        this.setPositionAndRotation(this.temporalVector.setComponents(x, y - this.getBaseOffset(), z), yaw % 360, 0);
+        double beforeY = this.y;
+        double beforeMotionY = this.motionY;
+        double appliedY = y - this.getBaseOffset();
+        this.setPositionAndRotation(this.temporalVector.setComponents(x, appliedY, z), yaw % 360, 0);
         // Client-predicted boat input (SAI / legacy MoveEntityAbsolute) is authoritative for
         // this tick. entityBaseTick still runs move(motion*) afterwards; leftover buoyancy
         // motion from empty-boat wave sim (or a previous tick) would keep integrating and
@@ -467,9 +521,32 @@ public class EntityBoat extends EntityVehicle {
         // water-surface Y, but proxies that echo the last network Y form a takeoff loop.
         // Clear residual velocity when accepting a client-authored pose. Server-controlled
         // boats (protocol >= 1.21.130) use onPlayerInput/moveVehicle instead of onInput.
+        // TEMP #1-2: keep the clear, but log whether onInput itself is already climbing.
         this.motionX = 0;
         this.motionY = 0;
         this.motionZ = 0;
+        if (TEMP_BOAT_TAKEOFF_DEBUG) {
+            double dy = this.y - beforeY;
+            // Log every climb / drop, or every 5th SAI while riding to keep volume readable.
+            if (Math.abs(dy) > 0.0005 || Math.abs(beforeMotionY) > 0.0005 || (this.age % 5 == 0)) {
+                Entity passenger = getPassenger();
+                int protocol = passenger instanceof Player p ? p.protocol : -1;
+                Server.getInstance().getLogger().info(String.format(
+                        "[TEMP #1-2 boat-onInput] id=%d age=%d protocol=%d rawY=%.5f appliedY=%.5f beforeY=%.5f afterY=%.5f dy=%.5f beforeMotionY=%.5f clearedMotion=true waterDiff=%.5f onGround=%s",
+                        this.getId(),
+                        this.age,
+                        protocol,
+                        y,
+                        appliedY,
+                        beforeY,
+                        this.y,
+                        dy,
+                        beforeMotionY,
+                        getWaterLevel(),
+                        this.onGround
+                ));
+            }
+        }
     }
 
     public boolean isFull() {

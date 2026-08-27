@@ -460,6 +460,16 @@ public class EntityBoat extends EntityVehicle {
 
     public void onInput(double x, double y, double z, double yaw) {
         this.setPositionAndRotation(this.temporalVector.setComponents(x, y - this.getBaseOffset(), z), yaw % 360, 0);
+        // Client-predicted boat input (SAI / legacy MoveEntityAbsolute) is authoritative for
+        // this tick. entityBaseTick still runs move(motion*) afterwards; leftover buoyancy
+        // motion from empty-boat wave sim (or a previous tick) would keep integrating and
+        // climb the boat every tick. Native clients hide this by resending a corrected
+        // water-surface Y, but proxies that echo the last network Y form a takeoff loop.
+        // Clear residual velocity when accepting a client-authored pose. Server-controlled
+        // boats (protocol >= 1.21.130) use onPlayerInput/moveVehicle instead of onInput.
+        this.motionX = 0;
+        this.motionY = 0;
+        this.motionZ = 0;
     }
 
     public boolean isFull() {

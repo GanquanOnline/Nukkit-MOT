@@ -4171,7 +4171,7 @@ public class Player extends EntityHuman implements CommandSender, InventoryHolde
                     } else {
                         this.setSprinting(true);
                         if (!UsingItemReceive.shouldKeepUsingDespiteStartSprinting(
-                                this.isUsingItem(), authHoldToUse, authStartUsingItem)) {
+                                authHoldToUse, authStartUsingItem)) {
                             this.setUsingItem(false);
                         } else if (UsingItemReceive.DEBUG) {
                             log.info("[UsingItem] {} keep using despite START_SPRINTING item={}",
@@ -4663,7 +4663,6 @@ public class Player extends EntityHuman implements CommandSender, InventoryHolde
                             this.getAdventureSettings().set(Type.FLYING, playerToggleFlightEvent.isFlying());
                         }
                         break packetswitch;
-                    case PlayerActionPacket.ACTION_START_ITEM_USE_ON:
                     case PlayerActionPacket.ACTION_START_USING_ITEM:
                         if (UsingItemReceive.DEBUG) {
                             log.info("[UsingItem] {} PlayerAction start action={} using={} item={}",
@@ -4672,9 +4671,12 @@ public class Player extends EntityHuman implements CommandSender, InventoryHolde
                         }
                         this.tryStartUsingHeldItem("PlayerAction." + playerActionPacket.action, this.inventory.getItemInHand());
                         break packetswitch;
+                    case PlayerActionPacket.ACTION_START_ITEM_USE_ON:
                     case PlayerActionPacket.ACTION_STOP_ITEM_USE_ON:
+                        // Block item-use-on: skip default setUsingItem(false), do not start hold-to-use.
                         if (UsingItemReceive.DEBUG) {
-                            log.info("[UsingItem] {} PlayerAction STOP_ITEM_USE_ON using={}", this.username, this.isUsingItem());
+                            log.info("[UsingItem] {} PlayerAction item-use-on action={} using={}",
+                                    this.username, playerActionPacket.action, this.isUsingItem());
                         }
                         break packetswitch;
                 }
